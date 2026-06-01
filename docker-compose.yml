@@ -1,0 +1,33 @@
+services:
+  mysql:
+    image: mysql:8.4
+    environment:
+      MYSQL_DATABASE: tracktime
+      MYSQL_USER: tracktime
+      MYSQL_PASSWORD: secret
+      MYSQL_ROOT_PASSWORD: rootsecret
+    ports:
+      - "3306:3306"
+    volumes:
+      - tracktime_mysql:/var/lib/mysql
+
+  api:
+    image: serversideup/php:8.3-fpm-nginx
+    working_dir: /var/www/html
+    volumes:
+      - ./api:/var/www/html
+    ports:
+      - "8000:8080"
+    environment:
+      DB_CONNECTION: mysql
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_DATABASE: tracktime
+      DB_USERNAME: tracktime
+      DB_PASSWORD: secret
+      APP_URL: http://localhost:8000
+    depends_on:
+      - mysql
+
+volumes:
+  tracktime_mysql:
