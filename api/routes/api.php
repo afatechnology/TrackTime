@@ -8,10 +8,9 @@ use App\Http\Controllers\Api\TimeEntryController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function () {
-    Route::post('/auth/register', [AuthController::class, 'register']);
     Route::post('/auth/login', [AuthController::class, 'login']);
 
-    Route::middleware('auth:sanctum')->group(function () {
+    Route::middleware(['auth:sanctum', 'active'])->group(function () {
         Route::post('/auth/logout', [AuthController::class, 'logout']);
         Route::get('/auth/me', [AuthController::class, 'me']);
 
@@ -19,6 +18,7 @@ Route::prefix('v1')->group(function () {
 
         Route::get('/time-entries', [TimeEntryController::class, 'index']);
         Route::get('/time-entries/active', [TimeEntryController::class, 'active']);
+        Route::post('/time-entries/manual', [TimeEntryController::class, 'manual']);
         Route::post('/time-entries/start', [TimeEntryController::class, 'start']);
         Route::post('/time-entries/{timeEntry}/pause', [TimeEntryController::class, 'pause']);
         Route::post('/time-entries/{timeEntry}/resume', [TimeEntryController::class, 'resume']);

@@ -11,24 +11,41 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
+        $admin = User::factory()->create([
+            'name' => 'Admin',
+            'email' => 'admin@tracktime.app',
+            'password' => 'password',
+            'is_admin' => true,
+            'is_active' => true,
+        ]);
+
         $user = User::factory()->create([
             'name' => 'Demo User',
             'email' => 'demo@tracktime.app',
             'password' => 'password',
+            'is_active' => true,
         ]);
 
-        $projects = [
-            ['name' => 'Website Redesign', 'color' => '#3b82f6', 'client_name' => 'Acme Corp'],
-            ['name' => 'Mobile App', 'color' => '#10b981', 'client_name' => 'StartupXYZ'],
-            ['name' => 'Internal Admin', 'color' => '#f59e0b'],
+        $sharedProjects = [
+            ['name' => 'Website Redesign', 'color' => '#3b82f6', 'client_name' => 'Acme Corp', 'is_shared' => true],
+            ['name' => 'Mobile App', 'color' => '#10b981', 'client_name' => 'StartupXYZ', 'is_shared' => true],
+            ['name' => 'Internal Admin', 'color' => '#f59e0b', 'is_shared' => true],
         ];
 
-        foreach ($projects as $data) {
+        foreach ($sharedProjects as $data) {
             Project::create([
-                'user_id' => $user->id,
+                'user_id' => $admin->id,
                 'uuid' => (string) Str::uuid(),
                 ...$data,
             ]);
         }
+
+        Project::create([
+            'user_id' => $user->id,
+            'uuid' => (string) Str::uuid(),
+            'name' => 'Personal Tasks',
+            'color' => '#8b5cf6',
+            'is_shared' => false,
+        ]);
     }
 }

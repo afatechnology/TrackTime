@@ -14,7 +14,7 @@ class ProjectController extends Controller
 {
     public function index(Request $request): AnonymousResourceCollection
     {
-        $query = $request->user()->projects()->orderBy('name');
+        $query = Project::accessibleBy($request->user())->orderBy('name');
 
         if ($request->boolean('archived')) {
             $query->where('is_archived', true);
@@ -85,6 +85,7 @@ class ProjectController extends Controller
 
     private function authorizeProject(Request $request, Project $project): void
     {
-        abort_unless($project->user_id === $request->user()->id, 403);
+        abort_unless($project->isAccessibleBy($request->user()), 403);
+        abort_if($project->is_shared && $project->user_id !== $request->user()->id, 403, 'Shared projects can only be edited by an administrator.');
     }
 }

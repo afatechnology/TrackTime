@@ -215,9 +215,55 @@ class TimeEntryController extends Controller
         return response()->json(['message' => 'Time entry deleted']);
     }
 
+    public function manual(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'project_id' => ['required', 'integer'],
+            'uuid' => ['nullable', 'uuid', 'unique:time_entries,uuid'],
+            'duration_seconds' => ['required', 'integer', 'min:1', 'max:86400'],
+            'task_title' => ['nullable', 'string', 'max:255'],
+            'notes' => ['nullable', 'string'],
+            'worked_at' => ['nullable', 'date'],
+        ]);
+
+        $project = $this->findAccessibleProject($request, $data['project_id']);
+
+        $workedAt = isset($data['worked_at'])
+            ? Carbon::parse($data['worked_at'])
+            : now();
+
+        $startedAt = $workedAt->copy();
+        $endedAt = $workedAt->copy()->addSeconds($data['duration_seconds']);
+
+        $entry = $request->user()->timeEntries()->create([
+            'project_id' => $project->id,
+            'uuid' => $data['uuid'] ?? (string) Str::uuid(),
+            'started_at' => $startedAt,
+            'ended_at' => $endedAt,
+            'status' => 'completed',
+            'task_title' => $data['task_title'] ?? null,
+            'notes' => $data['notes'] ?? null,
+        ]);
+
+        $entry->segments()->create([
+            'uuid' => (string) Str::uuid(),
+            'started_at' => $startedAt,
+            'ended_at' => $endedAt,
+        ]);
+
+        return response()->json([
+            'entry' => new TimeEntryResource($entry->load(['project', 'segments'])),
+        ], 201);
+    }
+
+    private function findAccessibleProject(Request $request, int $projectId): Project
+    {
+        return Project::accessibleBy($request->user())->whereKey($projectId)->firstOrFail();
+    }
+
     private function findUserProject(Request $request, int $projectId): Project
     {
-        return $request->user()->projects()->whereKey($projectId)->firstOrFail();
+        return $this->findAccessibleProject($request, $projectId);
     }
 
     private function authorizeEntry(Request $request, TimeEntry $timeEntry): void

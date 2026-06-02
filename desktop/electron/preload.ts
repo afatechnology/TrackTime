@@ -19,6 +19,13 @@ const api = {
     ipcRenderer.invoke('timer:finish', entryUuid, notes),
   updateEntryNotes: (entryUuid: string, notes: string, taskTitle?: string) =>
     ipcRenderer.invoke('timer:update-notes', entryUuid, notes, taskTitle),
+  createManualEntry: (data: {
+    projectUuid: string;
+    durationSeconds: number;
+    taskTitle?: string;
+    notes?: string;
+    workedAt?: string;
+  }) => ipcRenderer.invoke('timer:manual', data),
   listEntries: (filters: object) => ipcRenderer.invoke('entries:list', filters),
   reportSummary: (period: string, from?: string, to?: string) =>
     ipcRenderer.invoke('reports:summary', period, from, to),
