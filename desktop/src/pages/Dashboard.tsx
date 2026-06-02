@@ -9,6 +9,15 @@ export default function Dashboard() {
   const [taskTitle, setTaskTitle] = useState('');
   const [notes, setNotes] = useState('');
   const [elapsed, setElapsed] = useState(0);
+  const [showManual, setShowManual] = useState(false);
+  const [manualProject, setManualProject] = useState('');
+  const [manualTask, setManualTask] = useState('');
+  const [manualNotes, setManualNotes] = useState('');
+  const [manualDate, setManualDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [manualHours, setManualHours] = useState('1');
+  const [manualMinutes, setManualMinutes] = useState('0');
+  const [manualError, setManualError] = useState('');
+  const [manualSaving, setManualSaving] = useState(false);
 
   const refresh = useCallback(async () => {
     const [projs, timer] = await Promise.all([
@@ -70,6 +79,41 @@ export default function Dashboard() {
   async function saveNotes() {
     if (!active) return;
     await window.tracktime.updateEntryNotes(active.uuid, notes, taskTitle || undefined);
+  }
+
+  async function submitManual() {
+    setManualError('');
+    if (!manualProject) {
+      setManualError('Select a project');
+      return;
+    }
+    const hours = parseInt(manualHours, 10) || 0;
+    const minutes = parseInt(manualMinutes, 10) || 0;
+    const durationSeconds = hours * 3600 + minutes * 60;
+    if (durationSeconds < 60) {
+      setManualError('Enter at least 1 minute of time');
+      return;
+    }
+    setManualSaving(true);
+    try {
+      await window.tracktime.createManualEntry({
+        projectUuid: manualProject,
+        durationSeconds,
+        taskTitle: manualTask || undefined,
+        notes: manualNotes || undefined,
+        workedAt: manualDate,
+      });
+      setManualTask('');
+      setManualNotes('');
+      setManualHours('1');
+      setManualMinutes('0');
+      setShowManual(false);
+      refresh();
+    } catch (err) {
+      setManualError(err instanceof Error ? err.message : 'Could not save entry');
+    } finally {
+      setManualSaving(false);
+    }
   }
 
   return (
@@ -153,6 +197,95 @@ export default function Dashboard() {
           </div>
         )}
       </section>
+
+      {!active && (
+        <section className="timer-card manual-entry-card">
+          <header className="manual-header">
+            <div>
+              <h2>Log time manually</h2>
+              <p className="muted">Forgot to start the timer? Add time spent on a task.</p>
+            </div>
+            <button
+              type="button"
+              className="btn secondary"
+              onClick={() => setShowManual((v) => !v)}
+            >
+              {showManual ? 'Cancel' : 'Add manual entry'}
+            </button>
+          </header>
+          {showManual && (
+            <div className="timer-start">
+              <label>
+                Project
+                <select value={manualProject} onChange={(e) => setManualProject(e.target.value)}>
+                  <option value="">Select project…</option>
+                  {projects.map((p) => (
+                    <option key={p.uuid} value={p.uuid}>
+                      {p.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Task (optional)
+                <input
+                  value={manualTask}
+                  onChange={(e) => setManualTask(e.target.value)}
+                  placeholder="What did you work on?"
+                />
+              </label>
+              <label>
+                Date worked
+                <input
+                  type="date"
+                  value={manualDate}
+                  onChange={(e) => setManualDate(e.target.value)}
+                />
+              </label>
+              <div className="duration-row">
+                <label>
+                  Hours
+                  <input
+                    type="number"
+                    min={0}
+                    max={24}
+                    value={manualHours}
+                    onChange={(e) => setManualHours(e.target.value)}
+                  />
+                </label>
+                <label>
+                  Minutes
+                  <input
+                    type="number"
+                    min={0}
+                    max={59}
+                    value={manualMinutes}
+                    onChange={(e) => setManualMinutes(e.target.value)}
+                  />
+                </label>
+              </div>
+              <label>
+                Notes (optional)
+                <textarea
+                  value={manualNotes}
+                  onChange={(e) => setManualNotes(e.target.value)}
+                  rows={2}
+                  placeholder="Summary of work…"
+                />
+              </label>
+              {manualError && <p className="error">{manualError}</p>}
+              <button
+                type="button"
+                className="btn primary"
+                onClick={submitManual}
+                disabled={manualSaving}
+              >
+                {manualSaving ? 'Saving…' : 'Save manual entry'}
+              </button>
+            </div>
+          )}
+        </section>
+      )}
     </div>
   );
 }

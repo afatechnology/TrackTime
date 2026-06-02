@@ -24,7 +24,7 @@ class SyncController extends Controller
 
         $user = $request->user();
 
-        $projectsQuery = $user->projects()->withTrashed();
+        $projectsQuery = Project::accessibleBy($user)->withTrashed();
         $entriesQuery = $user->timeEntries()->withTrashed()->with(['project', 'segments']);
 
         if ($since) {
@@ -88,8 +88,16 @@ class SyncController extends Controller
 
     private function upsertProject(int $userId, array $payload): void
     {
-        $project = Project::withTrashed()->firstOrNew(['uuid' => $payload['uuid']]);
-        $project->user_id = $userId;
+        $existing = Project::withTrashed()->where('uuid', $payload['uuid'])->first();
+
+        if ($existing?->is_shared && $existing->user_id !== $userId) {
+            return;
+        }
+
+        $project = $existing ?? new Project(['uuid' => $payload['uuid']]);
+        if (! $project->exists || ! $project->is_shared) {
+            $project->user_id = $userId;
+        }
         $project->name = $payload['name'];
         $project->description = $payload['description'] ?? null;
         $project->color = $payload['color'] ?? '#3b82f6';
@@ -108,8 +116,11 @@ class SyncController extends Controller
 
     private function upsertTimeEntry(int $userId, array $payload): void
     {
-        $project = Project::where('user_id', $userId)
+        $project = Project::query()
             ->where('uuid', $payload['project_uuid'])
+            ->where(function ($q) use ($userId) {
+                $q->where('user_id', $userId)->orWhere('is_shared', true);
+            })
             ->first();
 
         if (! $project) {

@@ -227,6 +227,47 @@ export class TrackTimeDatabase {
     return this.getActiveEntry();
   }
 
+  createManualEntry(data: {
+    projectUuid: string;
+    durationSeconds: number;
+    taskTitle?: string;
+    notes?: string;
+    workedAt?: string;
+  }) {
+    const active = this.getActiveEntry();
+    if (active) throw new Error('Finish or stop the active timer before adding manual time');
+
+    if (data.durationSeconds < 60) {
+      throw new Error('Duration must be at least 1 minute');
+    }
+
+    const workedDate = data.workedAt?.slice(0, 10) ?? new Date().toISOString().slice(0, 10);
+    const endedAt = new Date(`${workedDate}T17:00:00`);
+    const startedAt = new Date(endedAt.getTime() - data.durationSeconds * 1000);
+    const now = new Date().toISOString();
+    const entryUuid = uuidv4();
+
+    this.db
+      .prepare(
+        `INSERT INTO time_entries (uuid, project_uuid, started_at, ended_at, status, notes, task_title, server_id, synced_at, updated_at, deleted_at)
+         VALUES (?, ?, ?, ?, 'completed', ?, ?, NULL, NULL, ?, NULL)`,
+      )
+      .run(
+        entryUuid,
+        data.projectUuid,
+        startedAt.toISOString(),
+        endedAt.toISOString(),
+        data.notes ?? null,
+        data.taskTitle ?? null,
+        now,
+      );
+    this.db
+      .prepare('INSERT INTO time_segments (uuid, entry_uuid, started_at, ended_at) VALUES (?, ?, ?, ?)')
+      .run(uuidv4(), entryUuid, startedAt.toISOString(), endedAt.toISOString());
+
+    return this.listEntries({ limit: 1 })[0];
+  }
+
   finishTimer(entryUuid: string, notes?: string) {
     const now = new Date().toISOString();
     this.db

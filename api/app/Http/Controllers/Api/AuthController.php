@@ -11,29 +11,6 @@ use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
-    public function register(Request $request): JsonResponse
-    {
-        $data = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'email', 'max:255', 'unique:users,email'],
-            'password' => ['required', 'string', 'min:8', 'confirmed'],
-            'device_name' => ['required', 'string', 'max:255'],
-        ]);
-
-        $user = User::create([
-            'name' => $data['name'],
-            'email' => $data['email'],
-            'password' => $data['password'],
-        ]);
-
-        $token = $user->createToken($data['device_name'])->plainTextToken;
-
-        return response()->json([
-            'user' => $this->userPayload($user),
-            'token' => $token,
-        ], 201);
-    }
-
     public function login(Request $request): JsonResponse
     {
         $data = $request->validate([
@@ -47,6 +24,12 @@ class AuthController extends Controller
         if (! $user || ! Hash::check($data['password'], $user->password)) {
             throw ValidationException::withMessages([
                 'email' => ['The provided credentials are incorrect.'],
+            ]);
+        }
+
+        if (! $user->is_active) {
+            throw ValidationException::withMessages([
+                'email' => ['Your account has been disabled. Contact an administrator.'],
             ]);
         }
 

@@ -84,6 +84,19 @@ function registerIpc() {
   ipcMain.handle('timer:update-notes', (_e, entryUuid: string, notes: string, taskTitle?: string) =>
     db.updateEntryNotes(entryUuid, notes, taskTitle),
   );
+  ipcMain.handle(
+    'timer:manual',
+    (
+      _e,
+      data: {
+        projectUuid: string;
+        durationSeconds: number;
+        taskTitle?: string;
+        notes?: string;
+        workedAt?: string;
+      },
+    ) => db.createManualEntry(data),
+  );
 
   ipcMain.handle('entries:list', (_e, filters: object) => db.listEntries(filters));
   ipcMain.handle('reports:summary', (_e, period: string, from?: string, to?: string) =>

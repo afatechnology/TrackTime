@@ -6,9 +6,7 @@ type Props = {
 };
 
 export default function Login({ onLogin }: Props) {
-  const [mode, setMode] = useState<'login' | 'register'>('login');
   const [apiUrl, setApiUrl] = useState('http://localhost:8000/api/v1');
-  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -27,17 +25,8 @@ export default function Login({ onLogin }: Props) {
     const base = apiUrl.replace(/\/$/, '');
     try {
       await window.tracktime.setConfig({ api_base_url: base });
-      const body =
-        mode === 'login'
-          ? { email, password, device_name: `TrackTime-${navigator.platform}` }
-          : {
-              name,
-              email,
-              password,
-              password_confirmation: password,
-              device_name: `TrackTime-${navigator.platform}`,
-            };
-      const res = await fetch(`${base}/auth/${mode === 'login' ? 'login' : 'register'}`, {
+      const body = { email, password, device_name: `TrackTime-${navigator.platform}` };
+      const res = await fetch(`${base}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
         body: JSON.stringify(body),
@@ -73,12 +62,6 @@ export default function Login({ onLogin }: Props) {
               placeholder="https://your-server.com/api/v1"
             />
           </label>
-          {mode === 'register' && (
-            <label>
-              Name
-              <input value={name} onChange={(e) => setName(e.target.value)} required />
-            </label>
-          )}
           <label>
             Email
             <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
@@ -95,27 +78,10 @@ export default function Login({ onLogin }: Props) {
           </label>
           {error && <p className="error">{error}</p>}
           <button type="submit" className="btn primary" disabled={loading}>
-            {loading ? 'Please wait…' : mode === 'login' ? 'Sign in' : 'Create account'}
+            {loading ? 'Please wait…' : 'Sign in'}
           </button>
         </form>
-        <p className="switch-mode">
-          {mode === 'login' ? (
-            <>
-              No account?{' '}
-              <button type="button" className="link" onClick={() => setMode('register')}>
-                Register
-              </button>
-            </>
-          ) : (
-            <>
-              Have an account?{' '}
-              <button type="button" className="link" onClick={() => setMode('login')}>
-                Sign in
-              </button>
-            </>
-          )}
-        </p>
-        <p className="hint">Demo: demo@tracktime.app / password (after seeding API)</p>
+        <p className="hint">Accounts are created by an administrator. Demo: demo@tracktime.app / password</p>
       </div>
     </div>
   );

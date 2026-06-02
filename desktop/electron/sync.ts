@@ -192,15 +192,4 @@ export class SyncService {
     return res.data as { token: string; user: { id: number; name: string; email: string } };
   }
 
-  async register(baseUrl: string, name: string, email: string, password: string) {
-    const base = baseUrl.replace(/\/$/, '');
-    const res = await this.client.post(`${base}/auth/register`, {
-      name,
-      email,
-      password,
-      password_confirmation: password,
-      device_name: `TrackTime-${process.platform}`,
-    });
-    return res.data as { token: string; user: { id: number; name: string; email: string } };
-  }
 }

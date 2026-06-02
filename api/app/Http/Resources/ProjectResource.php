@@ -16,6 +16,7 @@ class ProjectResource extends JsonResource
             'description' => $this->description,
             'color' => $this->color,
             'is_archived' => $this->is_archived,
+            'is_shared' => $this->is_shared,
             'client_name' => $this->client_name,
             'hourly_rate' => $this->hourly_rate,
             'created_at' => $this->created_at?->toIso8601String(),
