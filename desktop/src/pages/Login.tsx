@@ -6,7 +6,7 @@ type Props = {
 };
 
 export default function Login({ onLogin }: Props) {
-  const [apiUrl, setApiUrl] = useState('http://localhost:8000/api/v1');
+  const [apiUrl, setApiUrl] = useState('http://tracktime.test/api/v1');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');

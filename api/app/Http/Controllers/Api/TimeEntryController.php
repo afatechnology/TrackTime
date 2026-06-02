@@ -192,17 +192,60 @@ class TimeEntryController extends Controller
     {
         $this->authorizeEntry($request, $timeEntry);
 
+        if (in_array($timeEntry->status, ['running', 'paused'], true)) {
+            abort(422, 'Finish or stop the active timer before editing times.');
+        }
+
         $data = $request->validate([
             'notes' => ['nullable', 'string'],
             'task_title' => ['nullable', 'string', 'max:255'],
             'project_id' => ['sometimes', 'integer'],
+            'started_at' => ['sometimes', 'date'],
+            'ended_at' => ['sometimes', 'date'],
+            'duration_seconds' => ['sometimes', 'integer', 'min:60', 'max:86400'],
         ]);
 
         if (isset($data['project_id'])) {
-            $this->findUserProject($request, $data['project_id']);
+            $project = $this->findAccessibleProject($request, $data['project_id']);
+            $timeEntry->project_id = $project->id;
+            unset($data['project_id']);
         }
 
-        $timeEntry->update($data);
+        if (isset($data['duration_seconds'])) {
+            $startedAt = isset($data['started_at'])
+                ? Carbon::parse($data['started_at'])
+                : $timeEntry->started_at;
+            $endedAt = $startedAt->copy()->addSeconds($data['duration_seconds']);
+            $data['started_at'] = $startedAt;
+            $data['ended_at'] = $endedAt;
+            unset($data['duration_seconds']);
+        } elseif (isset($data['started_at'], $data['ended_at'])) {
+            $data['started_at'] = Carbon::parse($data['started_at']);
+            $data['ended_at'] = Carbon::parse($data['ended_at']);
+        }
+
+        if (isset($data['started_at']) && ! ($data['started_at'] instanceof Carbon)) {
+            $data['started_at'] = Carbon::parse($data['started_at']);
+        }
+        if (isset($data['ended_at']) && ! ($data['ended_at'] instanceof Carbon)) {
+            $data['ended_at'] = Carbon::parse($data['ended_at']);
+        }
+
+        if (isset($data['started_at'], $data['ended_at']) && $data['ended_at']->lte($data['started_at'])) {
+            abort(422, 'End time must be after start time.');
+        }
+
+        $timeEntry->fill($data);
+        $timeEntry->save();
+
+        if (isset($data['started_at'], $data['ended_at'])) {
+            $timeEntry->segments()->delete();
+            $timeEntry->segments()->create([
+                'uuid' => (string) Str::uuid(),
+                'started_at' => $data['started_at'],
+                'ended_at' => $data['ended_at'],
+            ]);
+        }
 
         return new TimeEntryResource($timeEntry->fresh()->load(['project', 'segments']));
     }

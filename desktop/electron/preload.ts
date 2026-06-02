@@ -27,6 +27,14 @@ const api = {
     workedAt?: string;
   }) => ipcRenderer.invoke('timer:manual', data),
   listEntries: (filters: object) => ipcRenderer.invoke('entries:list', filters),
+  updateEntry: (uuid: string, data: object) => ipcRenderer.invoke('entries:update', uuid, data),
+  deleteEntry: (uuid: string) => ipcRenderer.invoke('entries:delete', uuid),
+  onSyncCompleted: (callback: (result: { ok: boolean; message?: string; manual?: boolean }) => void) => {
+    const listener = (_: unknown, result: { ok: boolean; message?: string; manual?: boolean }) =>
+      callback(result);
+    ipcRenderer.on('sync:completed', listener);
+    return () => ipcRenderer.removeListener('sync:completed', listener);
+  },
   reportSummary: (period: string, from?: string, to?: string) =>
     ipcRenderer.invoke('reports:summary', period, from, to),
   sync: () => ipcRenderer.invoke('sync:run'),

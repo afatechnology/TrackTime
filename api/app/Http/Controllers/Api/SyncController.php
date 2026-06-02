@@ -94,6 +94,13 @@ class SyncController extends Controller
             return;
         }
 
+        if ($existing && ! empty($payload['updated_at'])) {
+            $incoming = Carbon::parse($payload['updated_at']);
+            if ($existing->updated_at && $existing->updated_at->greaterThan($incoming)) {
+                return;
+            }
+        }
+
         $project = $existing ?? new Project(['uuid' => $payload['uuid']]);
         if (! $project->exists || ! $project->is_shared) {
             $project->user_id = $userId;
@@ -127,7 +134,16 @@ class SyncController extends Controller
             return;
         }
 
-        $entry = TimeEntry::withTrashed()->firstOrNew(['uuid' => $payload['uuid']]);
+        $existing = TimeEntry::withTrashed()->where('uuid', $payload['uuid'])->first();
+
+        if ($existing && ! empty($payload['updated_at'])) {
+            $incoming = Carbon::parse($payload['updated_at']);
+            if ($existing->updated_at && $existing->updated_at->greaterThan($incoming)) {
+                return;
+            }
+        }
+
+        $entry = $existing ?? new TimeEntry(['uuid' => $payload['uuid']]);
         $entry->user_id = $userId;
         $entry->project_id = $project->id;
         $entry->started_at = Carbon::parse($payload['started_at']);

@@ -49,7 +49,8 @@ export default function Settings({ user }: Props) {
           />
         </label>
         <p className="hint">
-          Point this to your Laravel API. Use MySQL in production; run migrations on the server.
+          Point this to your Laravel API. Sync runs automatically every 5 minutes and after changes.
+          Use Sync now if you were offline.
         </p>
         <div className="btn-row">
           <button type="submit" className="btn primary">

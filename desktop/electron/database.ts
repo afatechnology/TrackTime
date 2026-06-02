@@ -292,6 +292,76 @@ export class TrackTimeDatabase {
       .run(notes, taskTitle ?? null, now, entryUuid);
   }
 
+  updateEntry(
+    entryUuid: string,
+    data: {
+      project_uuid?: string;
+      task_title?: string | null;
+      notes?: string | null;
+      started_at?: string;
+      ended_at?: string;
+      duration_seconds?: number;
+    },
+  ) {
+    const entry = this.db
+      .prepare('SELECT * FROM time_entries WHERE uuid = ? AND deleted_at IS NULL')
+      .get(entryUuid) as TimeEntryRow | undefined;
+    if (!entry) throw new Error('Entry not found');
+    if (entry.status === 'running' || entry.status === 'paused') {
+      throw new Error('Finish the active timer before editing this entry');
+    }
+
+    const now = new Date().toISOString();
+    let startedAt = data.started_at ?? entry.started_at;
+    let endedAt = data.ended_at ?? entry.ended_at;
+
+    if (data.duration_seconds !== undefined) {
+      if (data.duration_seconds < 60) throw new Error('Duration must be at least 1 minute');
+      const end = endedAt ? new Date(endedAt) : new Date(startedAt);
+      startedAt = new Date(end.getTime() - data.duration_seconds * 1000).toISOString();
+      endedAt = end.toISOString();
+    }
+
+    if (!endedAt) throw new Error('Completed entries must have an end time');
+
+    this.db
+      .prepare(
+        `UPDATE time_entries SET project_uuid = COALESCE(?, project_uuid),
+         task_title = COALESCE(?, task_title), notes = COALESCE(?, notes),
+         started_at = ?, ended_at = ?, updated_at = ?, synced_at = NULL WHERE uuid = ?`,
+      )
+      .run(
+        data.project_uuid ?? null,
+        data.task_title ?? null,
+        data.notes ?? null,
+        startedAt,
+        endedAt,
+        now,
+        entryUuid,
+      );
+
+    this.db.prepare('DELETE FROM time_segments WHERE entry_uuid = ?').run(entryUuid);
+    this.db
+      .prepare('INSERT INTO time_segments (uuid, entry_uuid, started_at, ended_at) VALUES (?, ?, ?, ?)')
+      .run(uuidv4(), entryUuid, startedAt, endedAt);
+
+    return this.listEntries({ limit: 500 }).find((e) => e.uuid === entryUuid);
+  }
+
+  deleteEntry(entryUuid: string) {
+    const entry = this.db
+      .prepare('SELECT status FROM time_entries WHERE uuid = ?')
+      .get(entryUuid) as { status: string } | undefined;
+    if (!entry) throw new Error('Entry not found');
+    if (entry.status === 'running' || entry.status === 'paused') {
+      throw new Error('Stop the active timer before deleting this entry');
+    }
+    const now = new Date().toISOString();
+    this.db
+      .prepare('UPDATE time_entries SET deleted_at = ?, updated_at = ?, synced_at = NULL WHERE uuid = ?')
+      .run(now, now, entryUuid);
+  }
+
   listEntries(filters: { from?: string; to?: string; project_uuid?: string; limit?: number }) {
     let sql = `SELECT e.*, p.name as project_name, p.color as project_color
       FROM time_entries e JOIN projects p ON p.uuid = e.project_uuid

@@ -6,6 +6,7 @@ import Login from './pages/Login';
 import Projects from './pages/Projects';
 import Reports from './pages/Reports';
 import Settings from './pages/Settings';
+import TimeLog from './pages/TimeLog';
 import type { User } from './types';
 
 export default function App() {
@@ -13,10 +14,17 @@ export default function App() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    window.tracktime.getSession().then((session) => {
-      setUser(session?.user ?? null);
+    if (!window.tracktime) {
       setLoading(false);
-    });
+      return;
+    }
+    window.tracktime
+      .getSession()
+      .then((session) => {
+        setUser(session?.user ?? null);
+      })
+      .catch(() => setUser(null))
+      .finally(() => setLoading(false));
   }, []);
 
   if (loading) {
@@ -38,6 +46,7 @@ export default function App() {
         <Route path="/" element={<Dashboard />} />
         <Route path="/projects" element={<Projects />} />
         <Route path="/reports" element={<Reports />} />
+        <Route path="/time-log" element={<TimeLog />} />
         <Route path="/settings" element={<Settings user={user} />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

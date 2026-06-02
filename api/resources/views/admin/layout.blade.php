@@ -94,6 +94,7 @@
         .filters { display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: end; margin-bottom: 1rem; }
         .filters label { margin-bottom: 0; }
         .filters input, .filters select { max-width: 160px; }
+        .custom-dates { display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: end; }
     </style>
 </head>
 <body>

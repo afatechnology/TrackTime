@@ -40,6 +40,7 @@ export class SyncService {
         is_archived: Boolean(p.is_archived),
         client_name: p.client_name,
         hourly_rate: p.hourly_rate,
+        updated_at: p.updated_at,
         deleted_at: p.deleted_at,
       })),
       time_entries: timeEntries.map((e) => ({
@@ -50,6 +51,7 @@ export class SyncService {
         status: e.status,
         notes: e.notes,
         task_title: e.task_title,
+        updated_at: e.updated_at,
         deleted_at: e.deleted_at,
         segments: (e.segments as Record<string, unknown>[]).map((s) => ({
           uuid: s.uuid,
@@ -115,6 +117,14 @@ export class SyncService {
 
     for (const e of data.time_entries ?? []) {
       const row = e as Record<string, unknown>;
+      const existingEntry = sqlDb
+        .prepare('SELECT updated_at FROM time_entries WHERE uuid = ?')
+        .get(row.uuid as string) as { updated_at: string } | undefined;
+      const remoteEntryUpdated = (row.updated_at as string) ?? '';
+      if (existingEntry && existingEntry.updated_at > remoteEntryUpdated) {
+        continue;
+      }
+
       const project = sqlDb
         .prepare('SELECT uuid FROM projects WHERE server_id = ? OR uuid = ?')
         .get(row.project_id, row.project_uuid ?? '') as { uuid: string } | undefined;
